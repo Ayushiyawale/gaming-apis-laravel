@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->date('dob');
-            $table->string('password')->nullable(); // nullable because we use OTP
+            // $table->string('password')->nullable(); // nullable because we use OTP
             $table->timestamps();
         });
     }

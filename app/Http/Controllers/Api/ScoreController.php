@@ -8,99 +8,76 @@ use App\Models\Score;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+// use DB;
 
 class ScoreController extends Controller
 {
+    
     public function saveScore(Request $request)
     {
-        $request->validate([
-            'score' => 'required|integer|between:50,500'
-        ]);
-
-        $user = $request->auth_user;
-
+        $request->validate(['score' => 'required|integer|between:50,500']);
+        $user = $request->user;
         $today = Carbon::today();
-        $scoreCount = Score::where('user_id', $user->id)
+
+        $count = Score::where('user_id', $user->id)
             ->whereDate('created_at', $today)
             ->count();
 
-        if ($scoreCount >= 3) {
-            return response()->json(['error' => 'Daily score limit reached'], 403);
+        if ($count >= 3) {
+            return response()->json(['error' => 'Limit exceeded'], 400);
         }
 
-        Score::create([
-            'user_id' => $user->id,
-            'score' => $request->score
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'Score saved']);
+        Score::create(['user_id' => $user->id, 'score' => $request->score]);
+        return response()->json(['success' => true]);
     }
 
     public function getOverallScore(Request $request)
     {
-        $user = $request->auth_user;
+        $user = $request->user;
+        $total = Score::where('user_id', $user->id)->sum('score');
 
-        $totalScore = Score::where('user_id', $user->id)->sum('score');
-
-        // Get rank by ordering total scores
-        $userScores = Score::select('user_id', DB::raw('SUM(score) as total'))
+        $scores = Score::select('user_id', DB::raw('SUM(score) as total'))
             ->groupBy('user_id')
             ->orderByDesc('total')
             ->get();
 
-        $rank = $userScores->search(function ($u) use ($user) {
-            return $u->user_id == $user->id;
-        }) + 1;
+        $rank = $scores->search(fn ($item) => $item->user_id == $user->id) + 1;
 
-        return response()->json([
-            'success' => true,
-            'totalScore' => $totalScore,
-            'rank' => $rank
-        ]);
+        return response()->json(['success' => true, 'rank' => $rank, 'totalScore' => $total]);
     }
 
     public function getWeeklyScore(Request $request)
     {
-        $user = $request->auth_user;
-
-        // Week 1 starts: 28th March 2025
-        $startDate = Carbon::create(2025, 3, 28)->startOfDay();
-        $endDate = Carbon::now();
-
+        $user = $request->user;
+        $start = Carbon::create(2025, 3, 28)->startOfDay();
+        $now = Carbon::now();
         $weeks = [];
-        $weekNo = 1;
+        $i = 1;
 
-        while ($startDate->lessThanOrEqualTo($endDate)) {
-            $weekStart = $startDate->copy();
-            $weekEnd = $weekStart->copy()->addDays(6);
-
-            $userScore = Score::where('user_id', $user->id)
-                ->whereBetween('created_at', [$weekStart, $weekEnd])
+        while ($start->lt($now)) {
+            $end = $start->copy()->addDays(6)->endOfDay();
+            $total = Score::where('user_id', $user->id)
+                ->whereBetween('created_at', [$start, $end])
                 ->sum('score');
 
-            $weeklyScores = Score::select('user_id', DB::raw('SUM(score) as total'))
-                ->whereBetween('created_at', [$weekStart, $weekEnd])
+            $ranks = Score::select('user_id', DB::raw('SUM(score) as total'))
+                ->whereBetween('created_at', [$start, $end])
                 ->groupBy('user_id')
                 ->orderByDesc('total')
                 ->get();
 
-            $rank = $weeklyScores->search(fn ($u) => $u->user_id == $user->id);
-            $rank = $rank !== false ? $rank + 1 : null;
+            $rank = $total > 0 ? $ranks->search(fn($r) => $r->user_id == $user->id) + 1 : null;
 
             $weeks[] = [
-                'weekNo' => $weekNo,
+                'weekNo' => $i,
                 'rank' => $rank,
-                'totalScore' => $userScore
+                'totalScore' => $total
             ];
-
-            $startDate = $weekEnd->addDay(); // move to next Friday
-            $weekNo++;
+            $i++;
+            $start->addDays(7);
         }
 
-        return response()->json([
-            'success' => true,
-            'weeks' => $weeks
-        ]);
+        return response()->json(['success' => true, 'weeks' => $weeks]);
     }
 }
 

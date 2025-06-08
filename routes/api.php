@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\OtpController;
+// use App\Http\Controllers\Api\OtpController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ScoreController;
 /*
@@ -21,11 +21,10 @@ use App\Http\Controllers\Api\ScoreController;
 // });
 
 
-Route::post('/send-otp', [OtpController::class, 'sendOtp']);
+Route::post('/send-otp', [AuthController::class, 'sendOtp']);
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware(['jwt.verify'])->group(function () {
+Route::middleware(['auth.jwt'])->group(function () {
     Route::post('/save-score', [ScoreController::class, 'saveScore']);
     Route::get('/overall-score', [ScoreController::class, 'getOverallScore']);
     Route::get('/weekly-score', [ScoreController::class, 'getWeeklyScore']);

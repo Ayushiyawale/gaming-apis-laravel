@@ -3,25 +3,19 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Notifications\Notifiable;
+// use HasFactory;  // optionally include if using factories
 
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable
 {
-    // Tell Laravel to use custom table name
+    use Notifiable;
+
     protected $table = 'register_user';
 
-    // Define the fillable fields
-    protected $fillable = ['mobile', 'name', 'email', 'dob', 'password'];
+    // If primary key is not the default 'id' (and uses UUID or custom ID)
+    // protected $primaryKey = 'mobile';  // or whichever column
+    // public $incrementing = false;
+    // protected $keyType = 'string';
 
-    // JWT identifier (usually the user ID)
-    public function getJWTIdentifier()
-    {
-        return $this->getKey();
-    }
-
-    // Add any custom claims (return empty array if none)
-    public function getJWTCustomClaims()
-    {
-        return [];
-    }
+    protected $fillable = ['mobile', 'name', 'email', 'dob'];
 }

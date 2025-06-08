@@ -8,9 +8,9 @@ class Score extends Model
 {
     protected $fillable = ['user_id', 'score'];
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
+    // public function user()
+    // {
+    //     return $this->belongsTo(User::class, 'user_id');
+    // }
 }
 
